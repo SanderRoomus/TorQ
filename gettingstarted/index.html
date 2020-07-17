@@ -325,6 +325,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#using-the-code-profiler-with-torqsh" class="md-nav__link">
+    Using the Code Profiler with torq.sh
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#logging" class="md-nav__link">
     Logging
   </a>
@@ -537,6 +544,13 @@
         <li class="md-nav__item">
   <a href="#running-processes-using-torqsh" class="md-nav__link">
     Running processes using torq.sh
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-code-profiler-with-torqsh" class="md-nav__link">
+    Using the Code Profiler with torq.sh
   </a>
   
 </li>
@@ -975,6 +989,46 @@ extras flag can be used in this script. </p>
 $ ./torq.sh start sort1 -extras -s -3
 </code></pre>
 
+<p><a name="profiler"></p>
+<h2 id="using-the-code-profiler-with-torqsh">Using the Code Profiler with torq.sh</h2>
+<p>KDB 4.0 includes an experimental built-in call-stack snapshot primitive that allows
+building a sampling profiler.  The profiler uses the new function <a href="https://code.kx.com/q/ref/dotq/#qprf0-code-profiler"><code>.Q.prf0</code></a>. </p>
+<p>Requirements and documentation of the new code profiler by kx can be found <a href="https://code.kx.com/q/kb/profiler/">here</a>.</p>
+<p>Assuming a process is running, you can run the code below as an example in the command line.
+Note that this <code>top</code> function currently only allows a single process as an argument and
+multiple processes is not currently supported.</p>
+<pre><code>$ ./torq.sh top rdb1
+</code></pre>
+
+<p>This uses the <code>top.q</code> script given by kx (description found <a href="https://code.kx.com/q/kb/profiler/">here</a>)
+which will show an automatically updated display of functions most heavily 
+contributing to the running time. The display has the following fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>self</td>
+<td>the percentage of time spent in the function itself</td>
+</tr>
+<tr>
+<td>total</td>
+<td>percentage of time spent in the function including all descendants</td>
+</tr>
+<tr>
+<td>name</td>
+<td>the name of the function</td>
+</tr>
+<tr>
+<td>file</td>
+<td>the file path where the function is located</td>
+</tr>
+</tbody>
+</table>
 <p><a name="logging"></a></p>
 <h2 id="logging">Logging</h2>
 <p>By default, each process will redirect output to a standard out log and
