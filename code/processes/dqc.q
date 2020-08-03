@@ -77,7 +77,7 @@ dupchk:{[runtype;idnum;params;proc]
   if[params`comp;proc:params`compresproc];
   if[`=proc;:()];
   if[count select from .dqe.results where id=idnum,procschk=proc,chkstatus=`started;
-    .dqe.updresultstab[runtype;idnum;0Np;0b;"error:fail to complete before next run";`failed;params;proc]];
+    .dqe.updresultstab[resultstabdict!(runtype;idnum;0Np;0b;"error:fail to complete before next run";`failed;params);proc]];
   }
 
 /- set initial values in results table
@@ -93,8 +93,15 @@ initstatusupd:{[runtype;idnum;funct;params;rs]
   `.dqe.results insert (idnum;funct;parprint;rs[0];rs[1];.proc.cp[];0Np;0b;"";`started;runtype);
   }
 
+/- list for setting up parameter being passed to updresultstab
+resultstabdict:`runtype`idnum`end`res`des`status`params;
+  
+
 /- updates a check in the results table
-updresultstab:{[runtype;idnum;end;res;des;status;params;proc]
+updresultstab:{[args;proc]
+  runtype:args`runtype;idnum:args`idnum;end:args`end;res:args`res;
+  des:args`des;status:args`status;params:args`params;
+
   if[1b=params`comp;proc:params`compresproc];
   /- obtain count of checks that will be updated
   if[c:count s:exec i from .dqe.results where id=idnum, procschk=proc,chkstatus=`started;
@@ -121,11 +128,11 @@ chkcompare:{[runtype;idnum;params]
 
   /- if error in compare proc then fail check
   if[@[{all 0W=x};first b;0b];
-    .dqe.updresultstab[runtype;idnum;.proc.cp[];0b;"error: error on comparison process";`failed;params;`];:()];
+    .dqe.updresultstab[resultstabdict!(runtype;idnum;.proc.cp[];0b;"error: error on comparison process";`failed;params);`];:()];
   errorprocs:d[`procs] where (),all each @[{0W=x};d`results;0b];
   /- if error in all comparison procs then fail check
   if[(count errorprocs)= count d`results;
-    .dqe.updresultstab[runtype;idnum;.proc.cp[];0b;"error: error with all comparison procs";`failed;params;`];:()];
+    .dqe.updresultstab[resultstabdict!(runtype;idnum;.proc.cp[];0b;"error: error with all comparison procs";`failed;params);`];:()];
   matching:procsforcomp where all each params[`compallow] >= 100* abs -\:[a;first b]%\:first b;
   notmatching:procsforcomp except errorprocs,matching;
   .lg.o[`chkcompare;"comparison finished with id ",string idnum];
@@ -137,7 +144,7 @@ chkcompare:{[runtype;idnum;params]
 
   .lg.o[`chkcompare;"Updating descp of compare process in the results table"];
   resbool:not(count errorprocs)|count notmatching;
-  .dqe.updresultstab[runtype;idnum;.proc.cp[];resbool;s;`complete;params;`];
+  .dqe.updresultstab[resultstabdict!(runtype;idnum;.proc.cp[];resbool;s;`complete;params);`];
   }
 
 /- updates the results table with the check result
@@ -153,13 +160,13 @@ postback:{[runtype;idnum;proc;params;result]
 
     /- checks if error returned from server side;
     if[("e"=first result)&(not params`comp);
-    .dqe.updresultstab[runtype;idnum;0Np;0b;result;`failed;params;proc];
+    .dqe.updresultstab[resultstabdict!(runtype;idnum;0Np;0b;result;`failed;params);proc];
     :()];
 
   /- in comparison run, check if all results have returned
   $[params`comp;
     .dqe.chkcompare[runtype;idnum;params];
-    .dqe.updresultstab[runtype;idnum;.proc.cp[];first result;result[1];`complete;params;proc]];
+    .dqe.updresultstab[resultstabdict!(runtype;idnum;.proc.cp[];first result;result[1];`complete;params);proc]];
   }
 
 /- sends the check function over async
@@ -195,17 +202,17 @@ runcheck:{[runtype;idnum;fn;params;rs]
 
     .lg.o[`runcheck;"checking for processes that are not connectable"];
     if[not any raze[r]in\:exec procname from .servers.SERVERS where .dotz.liveh w;
-      .dqe.updresultstab[runtype;idnum;0Np;0b;"error:can't connect to process";`failed;params;`];
+      .dqe.updresultstab[resultstabdict!(runtype;idnum;0Np;0b;"error:can't connect to process";`failed;params);`];
     ];
     /- checks if any procs didn't get handles
-    procsdown:(h`procname) where 0N = h`w;
-    if[count procsdown;.dqe.updresultstab[runtype;idnum;0Np;0b;"error:process is down or has lost its handle";`failed;params]'[procsdown]];
+    procsdown:(h`procname)where 0N=h`w;
+    if[count procsdown;.dqe.updresultstab[resultstabdict!(runtype;idnum;0Np;0b;"error:process is down or has lost its handle";`failed;params)] each procsdown];
   ];
   if[params`comp;
     /- fail if comparison process is in list of processes to check against
-    if[(params`compproc) in h`procname;
+    if[(params`compproc)in h`procname;
       .lg.e[`runcheck;"Can't compare process with itself"];
-      .dqe.updresultstab[runtype;idnum;0Np;0b;"error:compare process can't be compared with itself";`failed;params]'[h`procname];
+      .dqe.updresultstab[resultstabdict!(runtype;idnum;0Np;0b;"error:compare process can't be compared with itself";`failed;params)] each h`procname;
       :()];
 
     params,:(enlist `compresproc)!enlist `$"," sv string h`procname;
@@ -221,7 +228,7 @@ runcheck:{[runtype;idnum;fn;params;rs]
 
     if[any[null h`w]|any null r[;1];
       .lg.e[`runcheck;"unable to compare as process down or missing handle"];
-      .dqe.updresultstab[runtype;idnum;0Np;0b;"error:unable to compare as process down or missing handle";`failed;params;params`compresproc];
+      .dqe.updresultstab[resultstabduct!(runtype;idnum;0Np;0b;"error:unable to compare as process down or missing handle";`failed;params);params`compresproc];
       :()];
    ]
   /- check if any handles exist, if not exit function
